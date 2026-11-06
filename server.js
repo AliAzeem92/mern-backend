@@ -17,11 +17,34 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// CORS Configuration
+// CORS Configuration: clean trailing slashes and allow frontend origins
+const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/+$/, "");
+
+const allowedOrigins = [
+    clientUrl,
+    "http://localhost:5173",
+    "http://localhost:3000",
+];
+
 app.use(
     cors({
-        origin: process.env.CLIENT_URL || "http://localhost:5173",
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+            if (!origin) return callback(null, true);
+
+            const normalizedOrigin = origin.replace(/\/+$/, "");
+            if (
+                allowedOrigins.includes(normalizedOrigin) ||
+                normalizedOrigin.endsWith(".vercel.app")
+            ) {
+                return callback(null, true);
+            }
+
+            return callback(new Error(`CORS blocked for origin: ${origin}`));
+        },
         credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
     })
 );
 
